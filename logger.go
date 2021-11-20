@@ -13,20 +13,35 @@ const (
 )
 
 type Log struct {
-	Title string
-	Reason string
+	Title   string
+	Reason  string
 	Payload string
-	Topic string
+	Topic   string
 	Message string
 }
 
+func DoLog(title string, reason string, payload string, topic string, message string) {
+	l := Log{
+		Title:   title,
+		Reason:  reason,
+		Payload: payload,
+		Topic:   topic,
+		Message: message,
+	}
+	l.log()
+}
 
 type LogConfig struct {
-	Format FormatterType
+	Format   FormatterType
 	LogLevel log.Level
 }
 
 var logConfig LogConfig
+
+func NewLogConfig(format FormatterType, level log.Level) {
+	logConfig.LogLevel = level
+	logConfig.Format = format
+}
 
 func init() {
 	if logConfig.Format == JSON {
@@ -66,13 +81,29 @@ func (l Log) Trace() {
 	l.entry().Trace(l.Message)
 }
 
-
 func (l Log) entry() *log.Entry {
 	return log.WithFields(log.Fields{
-		"title": l.Title,
-		"reason": l.Reason,
+		"title":   l.Title,
+		"reason":  l.Reason,
 		"payload": l.Payload,
-		"topic": l.Topic,
+		"topic":   l.Topic,
 	})
 }
 
+func (l Log) log() {
+	if logConfig.LogLevel == log.InfoLevel {
+		l.Info()
+	} else if logConfig.LogLevel == log.DebugLevel {
+		l.Debug()
+	} else if logConfig.LogLevel == log.TraceLevel {
+		l.Trace()
+	} else if logConfig.LogLevel == log.FatalLevel {
+		l.Fatal()
+	} else if logConfig.LogLevel == log.PanicLevel {
+		l.Panic()
+	} else if logConfig.LogLevel == log.ErrorLevel {
+		l.Error()
+	} else if logConfig.LogLevel == log.WarnLevel {
+		l.Warn()
+	}
+}
