@@ -1,4 +1,4 @@
-package main
+package logandgo
 
 import (
 	log "github.com/sirupsen/logrus"
