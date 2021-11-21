@@ -1,109 +1,127 @@
-package logandgo
+package main
 
 import (
-	log "github.com/sirupsen/logrus"
+	"io"
+	"log"
 	"os"
 )
 
-type FormatterType int64
+type LogLevel int64
 
-const (
-	JSON FormatterType = 0
-	TEXT               = 1
+var (
+	warningLogger *log.Logger
+	infoLogger    *log.Logger
+	errorLogger   *log.Logger
+	debugLogger   *log.Logger
+	panicLogger   *log.Logger
 )
 
-type Log struct {
-	Title   string
-	Reason  string
-	Payload string
-	Topic   string
-	Message string
-}
-
-func DoLog(title string, reason string, payload string, topic string, message string) {
-	l := Log{
-		Title:   title,
-		Reason:  reason,
-		Payload: payload,
-		Topic:   topic,
-		Message: message,
-	}
-	l.log()
-}
-
-type LogConfig struct {
-	Format   FormatterType
-	LogLevel log.Level
-}
-
-var logConfig LogConfig
-
-func NewLogConfig(format FormatterType, level log.Level) {
-	logConfig.LogLevel = level
-	logConfig.Format = format
-}
-
 func init() {
-	if logConfig.Format == JSON {
-		log.SetFormatter(&log.JSONFormatter{})
-	} else {
-		log.SetFormatter(&log.TextFormatter{})
+	infoLogger = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	warningLogger = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
+	errorLogger = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+	debugLogger = log.New(os.Stderr, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
+	panicLogger = log.New(os.Stderr, "PANIC: ", log.Ldate|log.Ltime|log.Lshortfile)
+}
+
+const (
+	PANIC LogLevel = 0
+	ERROR          = 1
+	WARN           = 2
+	INFO           = 3
+	DEBUG          = 4
+)
+
+type Format int64
+
+const (
+	JSON Format = 0
+	TEXT        = 1
+)
+
+type LogFields map[string]interface{}
+
+func (lf LogFields) toJson() string {
+	return toJson(lf)
+}
+
+func (lf LogFields) toText() string {
+	return toText("", lf)
+}
+
+type Logger interface {
+	Debug(fields LogFields)
+	Info(fields LogFields)
+	Warn(fields LogFields)
+	Error(fields LogFields)
+	Panic(fields LogFields)
+}
+
+func NewLogger(format Format, out io.Writer, level int) Logger {
+	switch format {
+	case JSON:
+		return NewJsonLogger(out, level)
+	case TEXT:
+		return NewTextLogger(out, level)
+	default:
+		panic("logger not defined")
 	}
-	log.SetOutput(os.Stdout)
-	log.SetLevel(logConfig.LogLevel)
 }
 
-func (l Log) Error() {
-	l.entry().Error(l.Message)
+type JsonLogger struct {
+	logLevel LogLevel
+	out      io.Writer
 }
 
-func (l Log) Info() {
-	l.entry().Info(l.Message)
+func NewJsonLogger(out io.Writer, level int) *JsonLogger {
+	return &JsonLogger{out: out, logLevel: LogLevel(level)}
 }
 
-func (l Log) Warn() {
-	l.entry().Warn(l.Message)
+func (j *JsonLogger) Debug(fields LogFields) {
+	output(debugLogger, DEBUG, j.logLevel, fields.toJson())
 }
 
-func (l Log) Panic() {
-	l.entry().Panic(l.Message)
+func (j *JsonLogger) Error(fields LogFields) {
+	output(errorLogger, ERROR, j.logLevel, fields.toJson())
 }
 
-func (l Log) Fatal() {
-	l.entry().Fatal(l.Message)
+func (j *JsonLogger) Info(fields LogFields) {
+	output(infoLogger, INFO, j.logLevel, fields.toJson())
 }
 
-func (l Log) Debug() {
-	l.entry().Debug(l.Message)
+func (j *JsonLogger) Warn(fields LogFields) {
+	output(warningLogger, WARN, j.logLevel, fields.toJson())
 }
 
-func (l Log) Trace() {
-	l.entry().Trace(l.Message)
+func (j *JsonLogger) Panic(fields LogFields) {
+	output(panicLogger, PANIC, j.logLevel, fields.toJson())
 }
 
-func (l Log) entry() *log.Entry {
-	return log.WithFields(log.Fields{
-		"title":   l.Title,
-		"reason":  l.Reason,
-		"payload": l.Payload,
-		"topic":   l.Topic,
-	})
+type TextLogger struct {
+	logLevel LogLevel
+	out      io.Writer
 }
 
-func (l Log) log() {
-	if logConfig.LogLevel == log.InfoLevel {
-		l.Info()
-	} else if logConfig.LogLevel == log.DebugLevel {
-		l.Debug()
-	} else if logConfig.LogLevel == log.TraceLevel {
-		l.Trace()
-	} else if logConfig.LogLevel == log.FatalLevel {
-		l.Fatal()
-	} else if logConfig.LogLevel == log.PanicLevel {
-		l.Panic()
-	} else if logConfig.LogLevel == log.ErrorLevel {
-		l.Error()
-	} else if logConfig.LogLevel == log.WarnLevel {
-		l.Warn()
-	}
+func NewTextLogger(out io.Writer, level int) *TextLogger {
+	return &TextLogger{out: out, logLevel: LogLevel(level)}
+}
+
+func (t *TextLogger) Debug(fields LogFields) {
+	output(debugLogger, DEBUG, t.logLevel, fields.toText())
+}
+
+func (t *TextLogger) Error(fields LogFields) {
+	output(errorLogger, ERROR, t.logLevel, fields.toText())
+}
+
+func (t *TextLogger) Info(fields LogFields) {
+	output(infoLogger, INFO, t.logLevel, fields.toText())
+}
+
+func (t *TextLogger) Warn(fields LogFields) {
+	output(warningLogger, WARN, t.logLevel, fields.toText())
+}
+
+func (t *TextLogger) Panic(fields LogFields) {
+	output(panicLogger, PANIC, t.logLevel, fields.toText())
 }
