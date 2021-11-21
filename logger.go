@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"log"
 	"os"
 )
@@ -57,12 +56,12 @@ type Logger interface {
 	Panic(fields LogFields)
 }
 
-func NewLogger(format Format, out io.Writer, level int) Logger {
+func NewLogger(format Format, level int) Logger {
 	switch format {
 	case JSON:
-		return NewJsonLogger(out, level)
+		return NewJsonLogger(level)
 	case TEXT:
-		return NewTextLogger(out, level)
+		return NewTextLogger(level)
 	default:
 		panic("logger not defined")
 	}
@@ -70,11 +69,10 @@ func NewLogger(format Format, out io.Writer, level int) Logger {
 
 type JsonLogger struct {
 	logLevel LogLevel
-	out      io.Writer
 }
 
-func NewJsonLogger(out io.Writer, level int) *JsonLogger {
-	return &JsonLogger{out: out, logLevel: LogLevel(level)}
+func NewJsonLogger(level int) *JsonLogger {
+	return &JsonLogger{logLevel: LogLevel(level)}
 }
 
 func (j *JsonLogger) Debug(fields LogFields) {
@@ -99,11 +97,10 @@ func (j *JsonLogger) Panic(fields LogFields) {
 
 type TextLogger struct {
 	logLevel LogLevel
-	out      io.Writer
 }
 
-func NewTextLogger(out io.Writer, level int) *TextLogger {
-	return &TextLogger{out: out, logLevel: LogLevel(level)}
+func NewTextLogger(level int) *TextLogger {
+	return &TextLogger{logLevel: LogLevel(level)}
 }
 
 func (t *TextLogger) Debug(fields LogFields) {
